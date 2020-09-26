@@ -35,7 +35,19 @@ int BF(int possibleShopToOpen, int accumulatedRisk)
 // w: suma de los elementos seleccionados hasta este nodo.
 bool poda_factibilidad = true; // define si la poda por factibilidad esta habilitada.
 bool poda_optimalidad = true; // define si la poda por optimalidad esta habilitada.
-int CurrentMaxBenefit = NoBenefit; // Mejor solucion hasta el momento.
+int CurrentMaxBenefit = NoBenefit; // Mejor beneficio hasta el momento.
+vector<int> MaxPossibleBenefits;
+
+void precalculateMaxBenefits(){
+	MaxPossibleBenefits.resize(NumberOfShops);
+	MaxPossibleBenefits[NumberOfShops - 1] = Shops[NumberOfShops - 1][benefit_index];
+	for (int i = NumberOfShops - 2; i >= 0; --i)
+	{
+		MaxPossibleBenefits[i] = Shops[i][benefit_index] + MaxPossibleBenefits[i + 1]; 
+	}
+	
+}
+
 int BT(int possibleShopToOpen, int accumulatedRisk,int partialBenefit)
 {
 	if (possibleShopToOpen >= NumberOfShops){
@@ -54,12 +66,7 @@ int BT(int possibleShopToOpen, int accumulatedRisk,int partialBenefit)
 	//poda de optimalidad
 	if (poda_optimalidad)
 	{
-		int max_possible_benefit = partialBenefit;
-		for (int i = possibleShopToOpen; i < NumberOfShops; ++i)
-		{
-			max_possible_benefit += Shops[i][benefit_index];
-		}
-		if (max_possible_benefit <= CurrentMaxBenefit) return NoBenefit;
+		if (partialBenefit + MaxPossibleBenefits[possibleShopToOpen] <= CurrentMaxBenefit) return NoBenefit;
 	}
 	
 	if (accumulatedRisk + Shops[possibleShopToOpen][risk_index] <= RiskLimit)
@@ -127,6 +134,7 @@ int main(int argc, char** argv)
 	{
 		CurrentMaxBenefit = NoBenefit;
 		poda_optimalidad = poda_factibilidad = true;
+		precalculateMaxBenefits();
 		optimum = BT(0,0,0);
 	}
 	else if (algoritmo == "BT-F")
@@ -141,6 +149,7 @@ int main(int argc, char** argv)
 		CurrentMaxBenefit = NoBenefit;
 		poda_optimalidad = true;
 		poda_factibilidad = false;
+		precalculateMaxBenefits();
 		optimum = BT(0, 0, 0);
 	}
 	else if (algoritmo == "DP")
