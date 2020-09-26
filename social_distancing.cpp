@@ -9,19 +9,25 @@
 
 using namespace std;
 
-int NoBenefit = 0; // Valor para indicar que no hubo solución.
-int benefit = 0;
-int risk = 1;
+int NoBenefit = 0; // Valor para indicar que no hay beneficio.
+int benefit_index = 0;
+int risk_index = 1;
 
 // Información de la instancia a resolver.
 int NumberOfShops, RiskLimit;
 vector<vector<int>> Shops;
 
-// i: posicion del elemento a considerar en este nodo.
-// w: suma de los elementos seleccionados hasta este nodo.
-// k: cantidad de elementos seleccionados hasta este nodo.
+// possibleShopToOpen: 
+// accumulatedRisk: 
 int BF(int possibleShopToOpen, int accumulatedRisk)
 {
+	if (possibleShopToOpen >= NumberOfShops) return NoBenefit;
+	if (accumulatedRisk + Shops[possibleShopToOpen][risk_index] <= RiskLimit)
+	{
+		return max(BF(possibleShopToOpen + 2, accumulatedRisk + Shops[possibleShopToOpen][risk_index]) + Shops[possibleShopToOpen][benefit_index],BF(possibleShopToOpen + 1,accumulatedRisk));
+	} else {
+		return BF(possibleShopToOpen + 1,accumulatedRisk);
+	}
 }
 
 // i: posicion del elemento a considerar en este nodo.
@@ -29,9 +35,40 @@ int BF(int possibleShopToOpen, int accumulatedRisk)
 // w: suma de los elementos seleccionados hasta este nodo.
 bool poda_factibilidad = true; // define si la poda por factibilidad esta habilitada.
 bool poda_optimalidad = true; // define si la poda por optimalidad esta habilitada.
-int BestCurrentSolution = NoBenefit; // Mejor solucion hasta el momento.
-int BT(int i, int w, int k)
+int CurrentMaxBenefit = NoBenefit; // Mejor solucion hasta el momento.
+int BT(int possibleShopToOpen, int accumulatedRisk,int partialBenefit)
 {
+	if (possibleShopToOpen >= NumberOfShops){
+		if (partialBenefit > CurrentMaxBenefit) CurrentMaxBenefit = partialBenefit;
+		return NoBenefit;
+	} 
+	//poda de factibilidad
+	if (poda_factibilidad){
+		bool notPossibleToOpenAnyMoreShops = true;
+		for (int i = possibleShopToOpen; i < NumberOfShops; ++i)
+		{
+			if (Shops[i][risk_index] + accumulatedRisk <= RiskLimit) notPossibleToOpenAnyMoreShops = false;
+		}
+		if(notPossibleToOpenAnyMoreShops) return NoBenefit;
+	}
+	//poda de optimalidad
+	if (poda_optimalidad)
+	{
+		int max_possible_benefit = partialBenefit;
+		for (int i = possibleShopToOpen; i < NumberOfShops; ++i)
+		{
+			max_possible_benefit += Shops[i][benefit_index];
+		}
+		if (max_possible_benefit <= CurrentMaxBenefit) return NoBenefit;
+	}
+	
+	if (accumulatedRisk + Shops[possibleShopToOpen][risk_index] <= RiskLimit)
+	{
+		return max(BT(possibleShopToOpen + 2, accumulatedRisk + Shops[possibleShopToOpen][risk_index],partialBenefit + Shops[possibleShopToOpen][benefit_index]) + Shops[possibleShopToOpen][benefit_index],BT(possibleShopToOpen + 1,accumulatedRisk,partialBenefit));
+	} else {
+		return BT(possibleShopToOpen + 1,accumulatedRisk,partialBenefit);
+	}
+	
 }
 
 vector<vector<int>> DynamicProgrammingMatrix; // Matriz de Memoria de PD.
@@ -41,8 +78,8 @@ int DP(int unprocessedShops, int accumulatedRisk)
 {
 	if (unprocessedShops >= NumberOfShops) return NoBenefit;
 	if (DynamicProgrammingMatrix[unprocessedShops][accumulatedRisk] == UNDEFINED) {
-		if (accumulatedRisk + Shops[unprocessedShops][risk] <= RiskLimit){
-			DynamicProgrammingMatrix[unprocessedShops][accumulatedRisk] = max(DP(unprocessedShops+1, accumulatedRisk), DP(unprocessedShops+2, accumulatedRisk+Shops[unprocessedShops][risk]) + Shops[unprocessedShops][benefit]);
+		if (accumulatedRisk + Shops[unprocessedShops][risk_index] <= RiskLimit){
+			DynamicProgrammingMatrix[unprocessedShops][accumulatedRisk] = max(DP(unprocessedShops+1, accumulatedRisk), DP(unprocessedShops+2, accumulatedRisk+Shops[unprocessedShops][risk_index]) + Shops[unprocessedShops][benefit_index]);
 		} else {
 			DynamicProgrammingMatrix[unprocessedShops][accumulatedRisk] = DP(unprocessedShops + 1, accumulatedRisk);
 		}
@@ -58,7 +95,7 @@ int main(int argc, char** argv)
 	// Leemos el parametro que indica el algoritmo a ejecutar.
 	map<string, string> algoritmos_implementados = {
 		{"BF", "Fuerza Bruta"}, {"BT", "Backtracking con podas"}, {"BT-F", "Backtracking con poda por factibilidad"}, 
-		{"BT-O", "Backtracking con poda por optimalidad"}, {"PD", "Programacion dinámica"}
+		{"BT-O", "Backtracking con poda por optimalidad"}, {"DP", "Programacion dinámica"}
 	};
 
 	// Verificar que el algoritmo pedido exista.
@@ -88,20 +125,20 @@ int main(int argc, char** argv)
 	}
 	else if (algoritmo == "BT")
 	{
-		BestCurrentSolution = NoBenefit;
+		CurrentMaxBenefit = NoBenefit;
 		poda_optimalidad = poda_factibilidad = true;
-		optimum = BT(0, 0, 0);
+		optimum = BT(0,0,0);
 	}
 	else if (algoritmo == "BT-F")
 	{
-		BestCurrentSolution = NoBenefit;
+		CurrentMaxBenefit = NoBenefit;
 		poda_optimalidad = false;
 		poda_factibilidad = true;
 		optimum = BT(0, 0, 0);
 	}
 	else if (algoritmo == "BT-O")
 	{
-		BestCurrentSolution = NoBenefit;
+		CurrentMaxBenefit = NoBenefit;
 		poda_optimalidad = true;
 		poda_factibilidad = false;
 		optimum = BT(0, 0, 0);
@@ -125,6 +162,6 @@ int main(int argc, char** argv)
 	clog << total_time << endl;
 
     // Imprimimos el resultado por stdout.
-    cout << (optimum == NoBenefit ? -1 : optimum) << endl;
+    cout << optimum << endl;
     return 0;
 }
