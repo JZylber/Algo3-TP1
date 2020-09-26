@@ -30,13 +30,10 @@ int BF(int possibleShopToOpen, int accumulatedRisk)
 	}
 }
 
-// i: posicion del elemento a considerar en este nodo.
-// k: cantidad de elementos seleccionados hasta este nodo.
-// w: suma de los elementos seleccionados hasta este nodo.
 bool poda_factibilidad = true; // define si la poda por factibilidad esta habilitada.
 bool poda_optimalidad = true; // define si la poda por optimalidad esta habilitada.
 int CurrentMaxBenefit = NoBenefit; // Mejor beneficio hasta el momento.
-vector<int> MaxPossibleBenefits;
+vector<int> MaxPossibleBenefits,MinPossibleRisk;
 
 void precalculateMaxBenefits(){
 	MaxPossibleBenefits.resize(NumberOfShops);
@@ -48,6 +45,16 @@ void precalculateMaxBenefits(){
 	
 }
 
+void precalculateMinRisks(){
+	MinPossibleRisk.resize(NumberOfShops);
+	MinPossibleRisk[NumberOfShops - 1] = Shops[NumberOfShops - 1][risk_index];
+	for (int i = NumberOfShops - 2; i >= 0; --i)
+	{
+		MinPossibleRisk[i] = min(Shops[i][risk_index],MinPossibleRisk[i + 1]); 
+	}
+	
+}
+
 int BT(int possibleShopToOpen, int accumulatedRisk,int partialBenefit)
 {
 	if (possibleShopToOpen >= NumberOfShops){
@@ -55,13 +62,9 @@ int BT(int possibleShopToOpen, int accumulatedRisk,int partialBenefit)
 		return NoBenefit;
 	} 
 	//poda de factibilidad
-	if (poda_factibilidad){
-		bool notPossibleToOpenAnyMoreShops = true;
-		for (int i = possibleShopToOpen; i < NumberOfShops; ++i)
-		{
-			if (Shops[i][risk_index] + accumulatedRisk <= RiskLimit) notPossibleToOpenAnyMoreShops = false;
-		}
-		if(notPossibleToOpenAnyMoreShops) return NoBenefit;
+	if (poda_factibilidad)
+	{
+		if(accumulatedRisk + MinPossibleRisk[possibleShopToOpen] > RiskLimit) return NoBenefit;
 	}
 	//poda de optimalidad
 	if (poda_optimalidad)
@@ -135,6 +138,7 @@ int main(int argc, char** argv)
 		CurrentMaxBenefit = NoBenefit;
 		poda_optimalidad = poda_factibilidad = true;
 		precalculateMaxBenefits();
+		precalculateMinRisks();
 		optimum = BT(0,0,0);
 	}
 	else if (algoritmo == "BT-F")
@@ -142,6 +146,7 @@ int main(int argc, char** argv)
 		CurrentMaxBenefit = NoBenefit;
 		poda_optimalidad = false;
 		poda_factibilidad = true;
+		precalculateMinRisks();
 		optimum = BT(0, 0, 0);
 	}
 	else if (algoritmo == "BT-O")
@@ -154,13 +159,9 @@ int main(int argc, char** argv)
 	}
 	else if (algoritmo == "DP")
 	{
-		// Precomputamos la solucion para los estados.
+		
 		DynamicProgrammingMatrix = vector<vector<int>>(NumberOfShops+1, vector<int>(RiskLimit+1, UNDEFINED));
 		
-		//for (int i = 0; i < n+1; ++i)
-		//	for (int j = 0; j < W+1; ++j)
-		//		PD(i, j);
-
 		// Obtenemos la solucion optima.
 		optimum = DP(0, 0);
 	}
